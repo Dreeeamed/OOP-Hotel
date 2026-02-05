@@ -77,33 +77,39 @@ public class HotelApplication {
 
     private void makeReservation() {
         try {
-            // 1. Collect basic info
             System.out.print("Check-in Date (YYYY-MM-DD): ");
             Date checkIn = Date.valueOf(scanner.nextLine());
             System.out.print("Check-out Date (YYYY-MM-DD): ");
             Date checkOut = Date.valueOf(scanner.nextLine());
-            System.out.print("Enter Room NUMBER: ");
+
+            System.out.print("Enter Room NUMBER to book: ");
             int roomNumber = Integer.parseInt(scanner.nextLine());
 
             Room room = roomService.getRoomByNumber(roomNumber);
-            Guest guest = guestService.getAndRegisterGuest(scanner.nextLine(), scanner);
+            System.out.print("Enter your Email: ");
+            String email = scanner.nextLine();
 
-
+            Guest guest = guestService.getAndRegisterGuest(email, scanner);
             ReservationDetails details = new ReservationDetails.Builder(guest.getId(), room.getId())
                     .withDates(checkIn, checkOut)
                     .build();
 
             int reservationId = resService.createReservation(details);
+            double amountDue = PricingPolicy.getInstance().calculateFinalPrice(room.getPrice());
 
 
-            double basePrice = room.getPrice();
-            double finalPrice = PricingPolicy.getInstance().calculateFinalPrice(basePrice);
+            System.out.println("Registration successful! Proceeding with booking...");
+            System.out.println("Total Amount Calculated (Policy Applied): $" + amountDue);
 
-            System.out.println("Total Price calculated (Season applied): $" + finalPrice);
-            System.out.print("Payment Method: ");
+            System.out.print("Enter Payment Method (Credit/Cash): ");
             String method = scanner.nextLine();
-            paymentService.processPayment(reservationId, finalPrice, method);
 
+            paymentService.processPayment(reservationId, amountDue, method);
+
+            System.out.println("Success! Booking #" + reservationId + " confirmed.");
+
+        } catch (NumberFormatException e) {
+            System.out.println("Input Error: Please enter a valid number.");
         } catch (Exception e) {
             System.out.println("Booking Failed: " + e.getMessage());
         }
@@ -131,7 +137,6 @@ public class HotelApplication {
             System.out.print("Enter Payment Method (or 'DECLINE' to test): ");
             String method = scanner.nextLine();
 
-            // Updated to handle PaymentDeclinedException
             paymentService.processPayment(resId, amount, method);
         } catch (PaymentDeclinedException e) {
             System.out.println("Payment Rejected: " + e.getMessage());

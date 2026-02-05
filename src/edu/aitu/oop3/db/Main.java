@@ -8,32 +8,29 @@ import java.sql.Connection;
 public class Main {
     public static void main(String[] args) {
         try {
-            // 1. Establish Database Connection
             Connection connection = DatabaseConnection.getConnection();
 
-            // 2. Initialize Repositories (Order by Dependency)
-            GuestRepository guestRepo = new GuestRepository(connection);
-            RoomRepository roomRepo = new RoomRepository(connection);
-            ReservationRepository resRepo = new ReservationRepository(connection);
-            PaymentRepository paymentRepo = new PaymentRepository(connection);
+            IGuestRepository guestRepo = new GuestRepository(connection);
+            IRoomRepository roomRepo = new RoomRepository(connection);
+            IReservationRepository resRepo = new ReservationRepository(connection);
+            IPaymentRepository paymentRepo = new PaymentRepository(connection);
 
-            // Create Tables
             guestRepo.createTable();
             roomRepo.createTable();
             resRepo.createTable();
             paymentRepo.createTable();
 
-            // 3. Initialize Services (Inject Repositories)
             GuestService guestService = new GuestService(guestRepo);
             RoomService roomService = new RoomService(roomRepo);
             RoomAvailabilityService availabilityService = new RoomAvailabilityService(connection, roomRepo);
             ReservationService resService = new ReservationService(resRepo, roomRepo);
             PaymentService paymentService = new PaymentService(paymentRepo);
 
-            // 4. Initial Setup
+            PricingPolicy.getInstance().setSeason("Holiday");
+            System.out.println("--- HOLYDAY SEASON - ON (test) ---");
+
             roomService.initializeRoomsIfNeeded();
 
-            // 5. Start Application with 5 arguments
             HotelApplication app = new HotelApplication(
                     guestService,
                     roomService,
