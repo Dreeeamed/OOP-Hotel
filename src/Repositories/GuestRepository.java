@@ -1,113 +1,67 @@
 package Repositories;
 
 import Entities.Guest;
-import Exceptions.DatabaseException;
-
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
-public class GuestRepository implements IGuestRepository {
-    private final Connection connection;
+public class GuestRepository extends BaseRepository<Guest> implements IGuestRepository {
 
     public GuestRepository(Connection connection) {
-        this.connection = connection;
+        super(connection, "guests");
+    }
+
+    @Override
+    public void add(Guest guest) {
+        String sql = "INSERT INTO guests (name, email) VALUES (?, ?) RETURNING id";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            prepareAddStatement(stmt, guest);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) guest.setId(rs.getInt("id"));
+            }
+        } catch (SQLException e) {
+            throw new Exceptions.DatabaseException("Error adding guest", e);
+        }
     }
 
     public void createTable() {
         String sql = """
-            CREATE TABLE IF NOT EXISTS guests (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                email VARCHAR(100) UNIQUE NOT NULL
-            );
-        """;
+        CREATE TABLE IF NOT EXISTS guests (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL
+        );
+    """;
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(sql);
         } catch (SQLException e) {
-            throw new DatabaseException("Error creating guests table", e);
+            throw new Exceptions.DatabaseException("Error creating guests table", e);
         }
     }
 
     @Override
-    public void addGuest(Guest guest) {
-        String sql = "INSERT INTO guests (name, email) VALUES (?, ?) RETURNING id";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, guest.getName());
-            stmt.setString(2, guest.getEmail());
-
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                int generatedId = rs.getInt("id");
-                guest.setId(generatedId);
-                System.out.println("Guest saved with ID: " + generatedId);
-            }
-        } catch (SQLException e) {
-            // We print here because duplicate email is a user error, not necessarily a system crash, so it goes back
-            System.out.println("Error saving guest (Email might be duplicate): " + e.getMessage());
-        }
+    protected Guest mapResultSetToEntity(ResultSet rs) throws SQLException {
+        Guest g = new Guest(rs.getString("name"), rs.getString("email"));
+        g.setId(rs.getInt("id"));
+        return g;
     }
 
     @Override
-    public List<Guest> getAllGuests() {
-        List<Guest> guests = new ArrayList<>();
-        String sql = "SELECT * FROM guests ORDER BY id";
-
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                Guest g = new Guest();
-                g.setId(rs.getInt("id"));
-                g.setName(rs.getString("name"));
-                g.setEmail(rs.getString("email"));
-                guests.add(g);
-            }
-        } catch (SQLException e) {
-            throw new DatabaseException("Error fetching guests", e);
-        }
-        return guests;
+    protected void prepareAddStatement(PreparedStatement stmt, Guest entity) throws SQLException {
+        stmt.setString(1, entity.getName());
+        stmt.setString(2, entity.getEmail());
     }
 
-    @Override
-    public Guest getGuestById(int id) {
-        String sql = "SELECT * FROM guests WHERE id = ?";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, id);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                Guest g = new Guest();
-                g.setId(rs.getInt("id"));
-                g.setName(rs.getString("name"));
-                g.setEmail(rs.getString("email"));
-                return g;
-            }
-        } catch (SQLException e) {
-            throw new DatabaseException("Error fetching guest by ID: " + id, e);
-        }
-        return null;
-    }
 
     @Override
     public Guest getGuestByEmail(String email) {
         String sql = "SELECT * FROM guests WHERE email = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, email);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                Guest g = new Guest();
-                g.setId(rs.getInt("id"));
-                g.setName(rs.getString("name"));
-                g.setEmail(rs.getString("email"));
-                return g;
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return mapResultSetToEntity(rs);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null; // Return null if not found (means they are a new user)
+        return null;
     }
 }

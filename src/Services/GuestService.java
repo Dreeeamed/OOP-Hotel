@@ -21,15 +21,15 @@ public class GuestService {
         }
 
         Guest newGuest = new Guest(name, email);
-        guestRepository.addGuest(newGuest);
+        guestRepository.add(newGuest);
     }
-    
+
     public List<Guest> getAllGuests() {
-        return guestRepository.getAllGuests();
+        return guestRepository.getAll();
     }
 
     public Guest getGuestById(int id) throws GuestNotFoundException {
-        Guest guest = guestRepository.getGuestById(id);
+        Guest guest = guestRepository.getById(id);
         if (guest == null) {
             throw new GuestNotFoundException("Guest with ID " + id + " was not found.");
         }
@@ -46,10 +46,13 @@ public class GuestService {
 
         System.out.println("It looks like you are new here.");
         System.out.print("Please enter your Full Name to register: ");
-        String name = scanner.next();
+
+        if (scanner.hasNextLine()) scanner.nextLine();
+        String name = scanner.nextLine();
 
         Guest newGuest = new Guest(name, email);
-        guestRepository.addGuest(newGuest);
+
+        guestRepository.add(newGuest);
 
         System.out.println("Registration successful! Proceeding with booking...");
         return newGuest;

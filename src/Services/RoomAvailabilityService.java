@@ -1,10 +1,8 @@
 package Services;
 
-import Entities.DormRoom;
 import Entities.Room;
-import Entities.StandardRoom;
-import Entities.SuiteRoom;
 import Repositories.IRoomRepository;
+import Configuration.RoomFactory;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -39,24 +37,10 @@ public class RoomAvailabilityService {
                     int number = rs.getInt("room_number");
                     int floor = rs.getInt("floor");
                     double price = rs.getDouble("price");
-                    boolean isAvailable = rs.getBoolean("is_available"); // Original status flag
+                    boolean isAvailable = rs.getBoolean("is_available");
                     String type = rs.getString("room_type");
 
-                    Room room;
-                    switch (type) {
-                        case "Standard":
-                            room = new StandardRoom(id, number, floor, price, isAvailable);
-                            break;
-                        case "Suite":
-                            room = new SuiteRoom(id, number, floor, price, isAvailable);
-                            break;
-                        case "Dorm":
-                            room = new DormRoom(id, number, floor, price, isAvailable);
-                            break;
-                        default:
-                            System.out.println("Warning: Found unknown room type: " + type);
-                            continue;
-                    }
+                    Room room = RoomFactory.createRoom(type, id, number, floor, price, isAvailable);
                     availableRooms.add(room);
                 }
             }

@@ -14,19 +14,14 @@ public class RoomService {
         this.roomRepository = roomRepository;
     }
 
-    //room initialization caller. Next stop. Hotel Application.
     public void initializeRoomsIfNeeded() {
-        // Now using the interface method
-        List<Room> Rooms = roomRepository.getAllRooms(); // Callim Load Method s
-        //    public List<Room> getAllRooms() {
-        //        List<Room> rooms = new ArrayList<>();
-        //        String sql = "SELECT * FROM rooms ORDER BY room_number"; <- If Empty:
+        List<Room> rooms = roomRepository.getAll();
 
-        if(Rooms.isEmpty()) {
-            System.out.println("Initializing rooms");
+        if(rooms.isEmpty()) {
+            System.out.println("Initializing rooms...");
             List<Room> newRooms = RoomInitialization.initializeRooms();
             for (Room room : newRooms) {
-                roomRepository.addRoom(room);
+                roomRepository.add(room);
             }
         }
     }
@@ -36,7 +31,7 @@ public class RoomService {
     }
 
     public List<Room> getAllRooms() {
-        return roomRepository.getAllRooms();
+        return roomRepository.getAll();
     }
 
     public Room getRoomByNumber(int roomNumber) throws RoomNotFoundException {

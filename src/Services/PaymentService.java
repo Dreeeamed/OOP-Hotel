@@ -3,6 +3,7 @@ package Services;
 import Entities.Payment;
 import Exceptions.PaymentDeclinedException;
 import Repositories.IPaymentRepository;
+import java.util.List;
 
 public class PaymentService {
     private final IPaymentRepository paymentRepo;
@@ -15,12 +16,19 @@ public class PaymentService {
         if ("DECLINE".equalsIgnoreCase(method)) {
             throw new PaymentDeclinedException("Bank rejected the transaction.");
         }
+
         if (amount > 10000) {
             throw new PaymentDeclinedException("Amount exceeds transaction limit.");
         }
 
         Payment p = new Payment(resId, amount);
-        paymentRepo.addPayment(p);
-        System.out.println("Payment recorded successfully.");
+
+        paymentRepo.add(p);
+
+        System.out.println("Payment recorded successfully for Reservation #" + resId);
+    }
+
+    public List<Payment> getAllPayments() {
+        return paymentRepo.getAll();
     }
 }

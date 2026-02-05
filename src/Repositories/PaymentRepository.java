@@ -1,17 +1,40 @@
 package Repositories;
 
 import Entities.Payment;
-import Exceptions.DatabaseException;
-
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
-public class PaymentRepository implements IPaymentRepository {
-    private final Connection connection;
+public class PaymentRepository extends BaseRepository<Payment> implements IPaymentRepository {
 
     public PaymentRepository(Connection connection) {
-        this.connection = connection;
+        super(connection, "payments");
+    }
+
+    @Override
+    protected Payment mapResultSetToEntity(ResultSet rs) throws SQLException {
+        Payment p = new Payment();
+        p.setId(rs.getInt("id"));
+        p.setReservationId(rs.getInt("reservation_id"));
+        p.setAmount(rs.getDouble("amount"));
+        p.setPaymentDate(rs.getDate("payment_date"));
+        return p;
+    }
+
+    @Override
+    protected void prepareAddStatement(PreparedStatement stmt, Payment entity) throws SQLException {
+        stmt.setInt(1, entity.getReservationId());
+        stmt.setDouble(2, entity.getAmount());
+        stmt.setDate(3, entity.getPaymentDate());
+    }
+
+    @Override
+    public void add(Payment payment) {
+        String sql = "INSERT INTO payments (reservation_id, amount, payment_date) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            prepareAddStatement(stmt, payment);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new Exceptions.DatabaseException("Error recording payment", e);
+        }
     }
 
     public void createTable() {
@@ -26,45 +49,7 @@ public class PaymentRepository implements IPaymentRepository {
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(sql);
         } catch (SQLException e) {
-            throw new DatabaseException("Error creating payments table", e);
+            throw new Exceptions.DatabaseException("Error creating payments table", e);
         }
-    }
-
-    @Override
-    public void addPayment(Payment payment) {
-        String sql = "INSERT INTO payments (reservation_id, amount, payment_date) VALUES (?, ?, ?)";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, payment.getReservationId());
-            stmt.setDouble(2, payment.getAmount());
-            stmt.setDate(3, payment.getPaymentDate());
-            stmt.executeUpdate();
-            System.out.println("Payment recorded successfully.");
-        } catch (SQLException e) {
-            System.out.println("Error: Could not record payment. Check if Reservation ID exists.");
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public List<Payment> getAllPayments() {
-        List<Payment> list = new ArrayList<>();
-        String sql = "SELECT * FROM payments";
-
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                Payment p = new Payment();
-                p.setId(rs.getInt("id"));
-                p.setReservationId(rs.getInt("reservation_id"));
-                p.setAmount(rs.getDouble("amount"));
-                p.setPaymentDate(rs.getDate("payment_date"));
-                list.add(p);
-            }
-        } catch (SQLException e) {
-            throw new DatabaseException("Error fetching payments", e);
-        }
-        return list;
     }
 }

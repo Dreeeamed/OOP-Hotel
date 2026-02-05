@@ -1,43 +1,22 @@
 package Repositories;
 
-import Entities.DormRoom;
 import Entities.Room;
-import Entities.StandardRoom;
-import Entities.SuiteRoom;
+import Configuration.RoomFactory;
 import Exceptions.DatabaseException;
-
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
-public class RoomRepository implements IRoomRepository {
-    private final Connection connection;
+// 1. MUST extend BaseRepository and implement the interface
+public class RoomRepository extends BaseRepository<Room> implements IRoomRepository {
 
     public RoomRepository(Connection connection) {
-        this.connection = connection;
+        // Pass "rooms" table name to the base class
+        super(connection, "rooms");
     }
 
-    // Not in Interface, but needed for Setup in Main
-    public void createTable() {
-        String sql = """
-            CREATE TABLE IF NOT EXISTS rooms (
-                id SERIAL PRIMARY KEY,
-                room_number INT NOT NULL UNIQUE,
-                floor INT NOT NULL,
-                price INT NOT NULL,
-                room_type VARCHAR(50) NOT NULL,
-                is_available BOOLEAN DEFAULT TRUE
-            );
-        """;
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute(sql);
-        } catch (SQLException e) {
-            throw new DatabaseException("Error creating rooms table", e);
-        }
-    }
-
+    // FIX: Rename addRoom to add to match the Interface/Generic pattern
     @Override
-    public void addRoom(Room room) {
+    public void add(Room room) {
         String sql = "INSERT INTO rooms (room_number, floor, price, room_type, is_available) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement value = connection.prepareStatement(sql)) {
             value.setInt(1, room.getRoomNumber());
@@ -51,68 +30,39 @@ public class RoomRepository implements IRoomRepository {
         }
     }
 
+    // 2. REQUIRED: Implement mapResultSetToEntity for BaseRepository to work
     @Override
-    public List<Room> getAllRooms() {
-        List<Room> rooms = new ArrayList<>();
-        String sql = "SELECT * FROM rooms ORDER BY room_number";
+    protected Room mapResultSetToEntity(ResultSet rs) throws SQLException {
+        int id = rs.getInt("id");
+        int number = rs.getInt("room_number");
+        int floor = rs.getInt("floor");
+        double price = rs.getDouble("price");
+        boolean avail = rs.getBoolean("is_available");
+        String type = rs.getString("room_type");
 
-        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                int number = rs.getInt("room_number");
-                int floor = rs.getInt("floor");
-                int price = rs.getInt("price");
-                boolean avail = rs.getBoolean("is_available");
-                String type = rs.getString("room_type");
-
-                Room room;
-                switch (type) {
-                    case "Standard":
-                        room = new StandardRoom(id, number, floor, price, avail);
-                        break;
-                    case "Suite":
-                        room = new SuiteRoom(id, number, floor, price, avail);
-                        break;
-                    case "Dorm":
-                        room = new DormRoom(id, number, floor, price, avail);
-                        break;
-                    default:
-                        System.out.println("Unknown room type: " + type);
-                        continue;
-                }
-                rooms.add(room);
-            }
-        } catch (SQLException e) {
-            throw new DatabaseException("Error fetching all rooms", e);
-        }
-        return rooms;
+        return RoomFactory.createRoom(type, id, number, floor, price, avail);
     }
+
+    // 3. REQUIRED: Implement prepareAddStatement for BaseRepository
+    @Override
+    protected void prepareAddStatement(PreparedStatement stmt, Room entity) throws SQLException {
+        stmt.setInt(1, entity.getRoomNumber());
+        stmt.setInt(2, entity.getFloor());
+        stmt.setDouble(3, entity.getPrice());
+        stmt.setString(4, entity.getType());
+        stmt.setBoolean(5, entity.isAvailable());
+    }
+
+    // NOTE: We REMOVED getAllRooms() because BaseRepository.getAll() replaces it perfectly.
 
     @Override
     public Room getRoomByNumber(int roomNumber) {
         String sql = "SELECT * FROM rooms WHERE room_number = ?";
-
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, roomNumber);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    int id = rs.getInt("id");
-                    int number = rs.getInt("room_number");
-                    int floor = rs.getInt("floor");
-                    int price = rs.getInt("price");
-                    boolean avail = rs.getBoolean("is_available");
-                    String type = rs.getString("room_type");
-
-                    switch (type) {
-                        case "Standard":
-                            return new StandardRoom(id, number, floor, price, avail);
-                        case "Suite":
-                            return new SuiteRoom(id, number, floor, price, avail);
-                        case "Dorm":
-                            return new DormRoom(id, number, floor, price, avail);
-                        default:
-                            return null;
-                    }
+                    return mapResultSetToEntity(rs); // Reuse the mapper
                 }
             }
         } catch (SQLException e) {
@@ -139,13 +89,30 @@ public class RoomRepository implements IRoomRepository {
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, roomId);
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getBoolean("is_available");
-                }
+                if (rs.next()) return rs.getBoolean("is_available");
             }
         } catch (SQLException e) {
             throw new DatabaseException("Error checking availability for room ID: " + roomId, e);
         }
         return false;
+    }
+
+    @Override
+    public void createTable() {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS rooms (
+                id SERIAL PRIMARY KEY,
+                room_number INT NOT NULL UNIQUE,
+                floor INT NOT NULL,
+                price DECIMAL(10, 2) NOT NULL,
+                room_type VARCHAR(50) NOT NULL,
+                is_available BOOLEAN DEFAULT TRUE
+            );
+        """;
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            throw new DatabaseException("Error creating rooms table", e);
+        }
     }
 }

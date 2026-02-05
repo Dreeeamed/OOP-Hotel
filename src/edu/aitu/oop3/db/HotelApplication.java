@@ -77,29 +77,32 @@ public class HotelApplication {
 
     private void makeReservation() {
         try {
+            // 1. Collect basic info
             System.out.print("Check-in Date (YYYY-MM-DD): ");
             Date checkIn = Date.valueOf(scanner.nextLine());
             System.out.print("Check-out Date (YYYY-MM-DD): ");
             Date checkOut = Date.valueOf(scanner.nextLine());
-
-            System.out.print("Enter Room NUMBER to book (e.g., 101): ");
+            System.out.print("Enter Room NUMBER: ");
             int roomNumber = Integer.parseInt(scanner.nextLine());
 
             Room room = roomService.getRoomByNumber(roomNumber);
+            Guest guest = guestService.getAndRegisterGuest(scanner.nextLine(), scanner);
 
-            System.out.print("Enter your Email: ");
-            String email = scanner.nextLine();
-            Guest guest = guestService.getAndRegisterGuest(email, scanner);
 
-            int reservationId = resService.createReservation(guest.getId(), room.getId(), checkIn, checkOut);
+            ReservationDetails details = new ReservationDetails.Builder(guest.getId(), room.getId())
+                    .withDates(checkIn, checkOut)
+                    .build();
 
-            System.out.print("Amount to Pay: ");
-            double amount = Double.parseDouble(scanner.nextLine());
+            int reservationId = resService.createReservation(details);
+
+
+            double basePrice = room.getPrice();
+            double finalPrice = PricingPolicy.getInstance().calculateFinalPrice(basePrice);
+
+            System.out.println("Total Price calculated (Season applied): $" + finalPrice);
             System.out.print("Payment Method: ");
             String method = scanner.nextLine();
-
-            paymentService.processPayment(reservationId, amount, method);
-            System.out.println("Success! Booking #" + reservationId + " confirmed.");
+            paymentService.processPayment(reservationId, finalPrice, method);
 
         } catch (Exception e) {
             System.out.println("Booking Failed: " + e.getMessage());
@@ -107,7 +110,8 @@ public class HotelApplication {
     }
 
     private void showReservations() {
-        List<Reservation> reservations = resService.getAllReservations();
+        List<Reservation> reservations = resService.getAll();
+
         if (reservations.isEmpty()) {
             System.out.println("No reservations found.");
             return;
