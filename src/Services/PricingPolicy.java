@@ -6,7 +6,7 @@ public class PricingPolicy {
 
     private PricingPolicy() {}
 
-    public static synchronized PricingPolicy getInstance() {
+        public static synchronized PricingPolicy getInstance() {
         if (instance == null) {
             instance = new PricingPolicy();
         }

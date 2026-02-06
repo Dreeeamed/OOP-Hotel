@@ -47,14 +47,13 @@ public class GuestService {
         System.out.println("It looks like you are new here.");
         System.out.print("Please enter your Full Name to register: ");
 
-        if (scanner.hasNextLine()) scanner.nextLine();
-        String name = scanner.nextLine();
+        String fullName = scanner.nextLine();
 
-        Guest newGuest = new Guest(name, email);
+        Guest newGuest = new Guest(fullName, email);
 
         guestRepository.add(newGuest);
 
-        System.out.println("Registration successful! Proceeding with booking...");
+        System.out.println("Registration successful!");
         return newGuest;
     }
 }

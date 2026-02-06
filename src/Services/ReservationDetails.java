@@ -38,7 +38,6 @@ public class ReservationDetails {
             this.roomId = roomId;
         }
 
-        // FIX: Added the missing method
         public Builder withDates(Date in, Date out) {
             this.checkIn = in;
             this.checkOut = out;
