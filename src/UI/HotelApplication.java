@@ -1,4 +1,4 @@
-package edu.aitu.oop3.db;
+package UI;
 
 import Services.*;
 import Entities.*;
